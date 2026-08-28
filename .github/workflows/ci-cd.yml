@@ -1,0 +1,58 @@
+name: Continuous Delivery & FinOps Cost Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install -r requirements-dev.txt -r app/requirements.txt
+          pytest tests/ --cov=auditor --cov=app
+
+  finops-cost-gate:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.12.0
+
+      - name: Render Helm Templates
+        run: |
+          mkdir -p build
+          helm template my-release gitops/charts/web-service > build/rendered.yaml
+
+      - name: Run Cloud Cost Gate Auditor
+        run: |
+          pip install pyyaml
+          python auditor/main.py --manifest build/rendered.yaml --budget 150.0 --webhook "${{ secrets.SLACK_WEBHOOK_URL }}"
+
+  build-and-gitops-sync:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: finops-cost-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Chart Image Tag with Git SHA
+        run: |
+          IMAGE_TAG=${{ github.sha }}
+          sed -i "s/tag: .*/tag: \"$IMAGE_TAG\"/g" gitops/charts/web-service/values.yaml
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(gitops): promote image tag $IMAGE_TAG [skip ci]" || echo "No changes to commit"
+          git push origin main
