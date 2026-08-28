@@ -1,12 +1,6 @@
 ```markdown
 # Automated GitOps Continuous Delivery Pipeline & Cloud Cost Auditor
 
-[![CI/CD & FinOps Gate](https://github.com/your-username/gitops-cost-auditor/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/your-username/gitops-cost-auditor)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-1.29%2B-blue)
-![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-orange)
-![FinOps](https://img.shields.io/badge/FinOps-Cost%20Guardrail-brightgreen)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
-
 An enterprise GitOps continuous delivery pipeline with an integrated pre-deployment FinOps cost-budget guardrail. The system evaluates Kubernetes resource requests and limits against cloud pricing models directly within GitHub Actions, automatically blocking pull requests that exceed defined budget thresholds before ArgoCD synchronizes changes to target clusters.
 
 ---
